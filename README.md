@@ -58,7 +58,10 @@ uv pip install --python .venv pandas numpy xgboost scikit-learn
 .venv\Scripts\activate
 #    macOS / Linux:  source .venv/bin/activate
 
-# 3. Run the pipeline in order (from the project root)
+# 3. Run the whole pipeline with a single command (from project root)
+python pipeline/init.py
+
+# Or run each step individually:
 python pipeline/generate_data.py    # creates data/synthetic_occupancy.csv
 python pipeline/process_split.py    # shows the split report and runs the leakage checks
 python pipeline/train_evaluate.py   # trains both models and writes metrics.json
@@ -210,6 +213,8 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 ├── data/
 │   └── synthetic_occupancy.csv
 ├── pipeline/
+│   ├── __init__.py
+│   ├── init.py
 │   ├── generate_data.py
 │   ├── process_split.py
 │   └── train_evaluate.py
