@@ -145,7 +145,8 @@ The project is three standalone scripts run in order. Each has one job.
 flowchart LR
     G["pipeline/generate_data.py<br/>numpy + pandas"] -->|writes| C[("data/synthetic_occupancy.csv")]
     C -->|reads| P["pipeline/process_split.py<br/>features + time split"]
-    P -->|"train / val / test DataFrames, in memory"| E["pipeline/train_evaluate.py<br/>Moving Average + XGBoost"]
+    P -->|writes| S[("data/train.csv<br/>data/validation.csv<br/>data/test.csv")]
+    S -->|loads| E["pipeline/train_evaluate.py<br/>Moving Average + XGBoost"]
     E -->|writes| M[("metrics.json")]
     E -->|prints| O["Console MAE table"]
 ```
@@ -153,12 +154,13 @@ flowchart LR
 | File | Responsibility |
 | --- | --- |
 | [pipeline/generate_data.py](pipeline/generate_data.py) | Builds the 548-day series: weekday base values (busy Tue–Thu, quiet weekends) × a gentle yearly wave + Gaussian noise (std 6), clipped to 0–100 whole desks. |
-| [pipeline/process_split.py](pipeline/process_split.py) | Validates the CSV, adds the past-only features, splits by time, and checks split integrity. Can run on its own or be imported. |
-| [pipeline/train_evaluate.py](pipeline/train_evaluate.py) | Imports `load_and_split()`, scores the 7-day Moving Average baseline, trains `XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.05)`, and saves MAE scores. |
-| `data/synthetic_occupancy.csv` | Raw data: `date`, `occupancy`. |
+| [pipeline/process_split.py](pipeline/process_split.py) | Validates the CSV, adds past-only features, splits chronologically, verifies split integrity, and exports clean `data/train.csv`, `data/validation.csv`, and `data/test.csv`. |
+| [pipeline/train_evaluate.py](pipeline/train_evaluate.py) | Loads splits, scores the 7-day Moving Average baseline, trains `XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.05)`, and saves MAE scores. |
+| `data/synthetic_occupancy.csv` | Raw generated series: `date`, `occupancy`. |
+| `data/train.csv` | Clean training split (373 rows) with strictly past-dated features only. |
+| `data/validation.csv` | Clean validation split (80 rows). |
+| `data/test.csv` | Clean unseen future test split (81 rows). |
 | `metrics.json` | MAE scores, split date ranges, and feature list. |
-
-The splits are passed in memory (by importing `process_split`) rather than saved as extra CSV files. This keeps the repository matching the approved layout in `folder.md`.
 
 ---
 
@@ -211,7 +213,10 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 
 ```text
 ├── data/
-│   └── synthetic_occupancy.csv
+│   ├── synthetic_occupancy.csv
+│   ├── train.csv
+│   ├── validation.csv
+│   └── test.csv
 ├── pipeline/
 │   ├── __init__.py
 │   ├── init.py
@@ -219,7 +224,6 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 │   ├── process_split.py
 │   └── train_evaluate.py
 ├── metrics.json
-├── libraries.md
 └── README.md
 ```
 

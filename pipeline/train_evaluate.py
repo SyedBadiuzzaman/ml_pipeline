@@ -21,7 +21,15 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error
 from xgboost import XGBRegressor
 
-from process_split import FEATURE_COLUMNS, PROJECT_ROOT, TARGET_COLUMN, load_and_split
+from process_split import (
+    FEATURE_COLUMNS,
+    PROJECT_ROOT,
+    TARGET_COLUMN,
+    TEST_CSV_PATH,
+    TRAIN_CSV_PATH,
+    VALIDATION_CSV_PATH,
+    load_and_split,
+)
 
 METRICS_PATH = PROJECT_ROOT / "metrics.json"
 RANDOM_SEED = 42
@@ -56,9 +64,22 @@ def split_summary(split_data: pd.DataFrame) -> dict[str, str | int]:
     }
 
 
+def load_splits() -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Load train/validation/test splits from data/ CSVs if available, or generate them."""
+    if TRAIN_CSV_PATH.exists() and VALIDATION_CSV_PATH.exists() and TEST_CSV_PATH.exists():
+        train_data = pd.read_csv(TRAIN_CSV_PATH)
+        train_data["date"] = pd.to_datetime(train_data["date"])
+        val_data = pd.read_csv(VALIDATION_CSV_PATH)
+        val_data["date"] = pd.to_datetime(val_data["date"])
+        test_data = pd.read_csv(TEST_CSV_PATH)
+        test_data["date"] = pd.to_datetime(test_data["date"])
+        return train_data, val_data, test_data
+    return load_and_split(save_to_disk=True)
+
+
 def evaluate_models() -> dict:
     """Train both models and return all metrics as a dictionary."""
-    train_data, validation_data, test_data = load_and_split()
+    train_data, validation_data, test_data = load_splits()
     model = train_xgboost(train_data)
 
     metrics: dict = {"moving_average_7d": {}, "xgboost": {}}

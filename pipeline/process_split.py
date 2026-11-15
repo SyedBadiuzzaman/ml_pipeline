@@ -6,11 +6,13 @@ Two rules matter most here:
 2. The split is chronological: train = oldest days, validation = middle,
    test = newest days. Rows are never shuffled.
 
-Run from the project root to see the split report:
-    python pipeline/process_split.py
+This script outputs clean, leakage-free CSV files to the `data/` directory:
+- `data/train.csv` (contains zero future data or future-dated features)
+- `data/validation.csv`
+- `data/test.csv`
 
-`train_evaluate.py` imports `load_and_split()` from this file, so the
-splits stay in memory and no extra CSV files are written.
+Run from the project root to generate the split CSVs and print the report:
+    python pipeline/process_split.py
 """
 
 from pathlib import Path
@@ -18,7 +20,12 @@ from pathlib import Path
 import pandas as pd
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-RAW_DATA_PATH = PROJECT_ROOT / "data" / "synthetic_occupancy.csv"
+DATA_DIR = PROJECT_ROOT / "data"
+RAW_DATA_PATH = DATA_DIR / "synthetic_occupancy.csv"
+
+TRAIN_CSV_PATH = DATA_DIR / "train.csv"
+VALIDATION_CSV_PATH = DATA_DIR / "validation.csv"
+TEST_CSV_PATH = DATA_DIR / "test.csv"
 
 TARGET_COLUMN = "occupancy"
 LAG_DAYS = [1, 7, 14]
@@ -146,13 +153,33 @@ def check_split_integrity(
         raise ValueError("Leakage: validation dates overlap or come after test dates.")
 
 
+def save_splits(
+    train_data: pd.DataFrame,
+    validation_data: pd.DataFrame,
+    test_data: pd.DataFrame,
+    train_path: Path = TRAIN_CSV_PATH,
+    val_path: Path = VALIDATION_CSV_PATH,
+    test_path: Path = TEST_CSV_PATH,
+) -> dict[str, Path]:
+    """Save clean, leakage-free split datasets to CSV files in data/."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    train_data.to_csv(train_path, index=False, date_format="%Y-%m-%d")
+    validation_data.to_csv(val_path, index=False, date_format="%Y-%m-%d")
+    test_data.to_csv(test_path, index=False, date_format="%Y-%m-%d")
+    return {"train": train_path, "validation": val_path, "test": test_path}
+
+
 def load_and_split(
     csv_path: Path = RAW_DATA_PATH,
+    save_to_disk: bool = True,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
-    """Run the full pipeline: load -> add features -> chronological split."""
+    """Run the full pipeline: load -> add features -> chronological split -> save CSVs."""
     raw_data = load_raw_data(csv_path)
     feature_data = add_features(raw_data)
-    return split_by_time(feature_data)
+    train_data, validation_data, test_data = split_by_time(feature_data)
+    if save_to_disk:
+        save_splits(train_data, validation_data, test_data)
+    return train_data, validation_data, test_data
 
 
 def describe_split(name: str, part: pd.DataFrame) -> str:
@@ -165,7 +192,7 @@ def describe_split(name: str, part: pd.DataFrame) -> str:
 
 def main() -> None:
     try:
-        train_data, validation_data, test_data = load_and_split()
+        train_data, validation_data, test_data = load_and_split(save_to_disk=True)
     except (FileNotFoundError, ValueError) as error:
         raise SystemExit(f"Error: {error}") from error
 
@@ -175,6 +202,10 @@ def main() -> None:
     print(describe_split("Test", test_data))
     print(f"Features: {', '.join(FEATURE_COLUMNS)}")
     print("Integrity check passed: train < validation < test, no overlapping dates.")
+    print("Saved clean split CSV files:")
+    print(f"  - Train (no future features): {TRAIN_CSV_PATH}")
+    print(f"  - Validation:                {VALIDATION_CSV_PATH}")
+    print(f"  - Test:                      {TEST_CSV_PATH}")
 
 
 if __name__ == "__main__":
