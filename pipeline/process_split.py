@@ -41,9 +41,9 @@ FEATURE_COLUMNS = [
     "is_weekend",
 ]
 
-TRAIN_SHARE = 0.70
+TRAIN_SHARE = 0.65
 VALIDATION_SHARE = 0.15
-# The test set gets the remaining (newest) 15%.
+# The test set gets the remaining (newest) 20% (107 rows), allowing a full 90-day backtest.
 
 
 def load_raw_data(csv_path: Path = RAW_DATA_PATH) -> pd.DataFrame:

@@ -1,26 +1,26 @@
 {
   "moving_average_7d": {
-    "validation_mae": 26.7286,
-    "test_mae": 23.2698
+    "validation_mae": 27.1054,
+    "test_mae": 23.9266
   },
   "xgboost": {
-    "validation_mae": 5.3038,
-    "test_mae": 6.5171
+    "validation_mae": 5.4235,
+    "test_mae": 6.1651
   },
   "splits": {
     "train": {
-      "rows": 373,
+      "rows": 347,
       "start_date": "2025-01-15",
-      "end_date": "2026-01-22"
+      "end_date": "2025-12-27"
     },
     "validation": {
       "rows": 80,
-      "start_date": "2026-01-23",
-      "end_date": "2026-04-12"
+      "start_date": "2025-12-28",
+      "end_date": "2026-03-17"
     },
     "test": {
-      "rows": 81,
-      "start_date": "2026-04-13",
+      "rows": 107,
+      "start_date": "2026-03-18",
       "end_date": "2026-07-02"
     }
   },
@@ -32,5 +32,24 @@
     "rolling_std_7",
     "day_of_week",
     "is_weekend"
-  ]
+  ],
+  "backtest_90d": {
+    "period": {
+      "start_date": "2026-04-04",
+      "end_date": "2026-07-02",
+      "days_evaluated": 90
+    },
+    "baseline_moving_average_7d": {
+      "mae": 23.5444,
+      "rmse": 27.1248
+    },
+    "xgboost_rolling_origin": {
+      "test_mae": 6.2341,
+      "test_rmse": 7.9414,
+      "avg_train_mae": 3.5458,
+      "avg_train_rmse": 4.4642,
+      "mae_generalization_gap": 2.6884,
+      "rmse_generalization_gap": 3.4771
+    }
+  }
 }

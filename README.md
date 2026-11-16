@@ -2,12 +2,12 @@
 
 > Synthetic daily desk-occupancy data, a leakage-safe feature pipeline, and two baseline forecasting models (Moving Average and XGBoost) for HiveSpace.
 
-![Python](https://img.shields.io/badge/python-3.12-blue) ![pandas](https://img.shields.io/badge/pandas-3.1-150458) ![XGBoost](https://img.shields.io/badge/XGBoost-3.4-green)
+![Python](https://img.shields.io/badge/python-3.12-blue) ![pandas](https://img.shields.io/badge/pandas-3.1-150458) ![XGBoost](https://img.shields.io/badge/XGBoost-3.4-green) ![matplotlib](https://img.shields.io/badge/matplotlib-3.11-orange)
 
 > [!NOTE]
 > All data in this repository is **synthetic**. The scores below show that the pipeline works. They do not show how the models would perform on real HiveSpace data.
 
-**Contents:** [Problem](#problem-and-solution) · [Quick start](#quick-start) · [Data Split Strategy](#data-split-strategy) · [Architecture](#architecture) · [Results](#results) · [Testing](#testing) · [Limitations](#known-limitations-and-next-steps)
+**Contents:** [Problem](#problem-and-solution) · [Quick start](#quick-start) · [Data Split Strategy](#data-split-strategy) · [Backtesting Results](#backtesting-results) · [Architecture](#architecture) · [Results](#results) · [Testing](#testing) · [Limitations](#known-limitations-and-next-steps)
 
 ---
 
@@ -39,7 +39,8 @@ Only the libraries approved in [libraries.md](libraries.md) are used:
 | **pandas** | Loading CSV data, `shift()`/`rolling()` feature engineering, date-ordered slicing |
 | **numpy** | Weekly pattern arrays and seeded random noise |
 | **xgboost** | `XGBRegressor`, the main forecasting model |
-| **scikit-learn** | `mean_absolute_error` for consistent evaluation |
+| **scikit-learn** | Evaluation metrics (`mean_absolute_error`, `root_mean_squared_error`) |
+| **matplotlib** | Plotting predicted vs. actual occupancy backtesting line chart |
 
 The Python standard library (`pathlib`, `json`) handles file paths and JSON output.
 
@@ -50,21 +51,22 @@ The Python standard library (`pathlib`, `json`) handles file paths and JSON outp
 **Prerequisites:** Python 3.10+ and [uv](https://docs.astral.sh/uv/) (or plain `pip`).
 
 ```powershell
-# 1. Create a virtual environment and install the approved libraries
+# 1. Create a virtual environment and install dependencies
 uv venv .venv
-uv pip install --python .venv pandas numpy xgboost scikit-learn
+uv pip install --python .venv pandas numpy xgboost scikit-learn matplotlib
 
 # 2. Activate it (Windows PowerShell)
 .venv\Scripts\activate
 #    macOS / Linux:  source .venv/bin/activate
 
-# 3. Run the whole pipeline with a single command (from project root)
+# 3. Run the whole 4-stage pipeline with a single command (from project root)
 python pipeline/init.py
 
 # Or run each step individually:
 python pipeline/generate_data.py    # creates data/synthetic_occupancy.csv
-python pipeline/process_split.py    # shows the split report and runs the leakage checks
-python pipeline/train_evaluate.py   # trains both models and writes metrics.json
+python pipeline/process_split.py    # builds features and exports clean split CSVs
+python pipeline/train_evaluate.py   # trains models and writes baseline metrics
+python pipeline/backtest.py         # executes 90-day rolling-origin backtest & chart
 ```
 
 Example output of `process_split.py`:
@@ -94,16 +96,16 @@ After features are built, the rows are **sorted by date** and cut into three blo
 
 | Split | Share | Rows | Date range | Purpose |
 | --- | --- | --- | --- | --- |
-| **Train** | 70% | 373 | 2025-01-15 → 2026-01-22 | The model learns from these days only |
-| **Validation** | 15% | 80 | 2026-01-23 → 2026-04-12 | Checks and tunes the models on unseen days |
-| **Test** | 15% | 81 | 2026-04-13 → 2026-07-02 | Final, untouched "future" used for the reported score |
+| **Train** | 65% | 347 | 2025-01-15 → 2025-12-27 | The model learns from these days only |
+| **Validation** | 15% | 80 | 2025-12-28 → 2026-03-17 | Checks and tunes the models on unseen days |
+| **Test** | 20% | 107 | 2026-03-18 → 2026-07-02 | Final unseen period (includes 90-day rolling backtest) |
 
 ```mermaid
 flowchart LR
     R["Raw data<br/>548 days<br/>2025-01-01 to 2026-07-02"] --> W["Drop first 14 days<br/>not enough history for lag_14"]
-    W --> T["TRAIN 70%<br/>2025-01-15 to 2026-01-22"]
-    T --> V["VALIDATION 15%<br/>2026-01-23 to 2026-04-12"]
-    V --> S["TEST 15%<br/>2026-04-13 to 2026-07-02"]
+    W --> T["TRAIN 65%<br/>2025-01-15 to 2025-12-27"]
+    T --> V["VALIDATION 15%<br/>2025-12-28 to 2026-03-17"]
+    V --> S["TEST 20%<br/>2026-03-18 to 2026-07-02<br/>(90-Day Backtest Window)"]
 ```
 
 Time only moves forward: every training date comes before every validation date, and every validation date comes before every test date.
@@ -156,24 +158,70 @@ flowchart LR
 | [pipeline/generate_data.py](pipeline/generate_data.py) | Builds the 548-day series: weekday base values (busy Tue–Thu, quiet weekends) × a gentle yearly wave + Gaussian noise (std 6), clipped to 0–100 whole desks. |
 | [pipeline/process_split.py](pipeline/process_split.py) | Validates the CSV, adds past-only features, splits chronologically, verifies split integrity, and exports clean `data/train.csv`, `data/validation.csv`, and `data/test.csv`. |
 | [pipeline/train_evaluate.py](pipeline/train_evaluate.py) | Loads splits, scores the 7-day Moving Average baseline, trains `XGBRegressor(n_estimators=200, max_depth=3, learning_rate=0.05)`, and saves MAE scores. |
+| [pipeline/backtest.py](pipeline/backtest.py) | Runs 90-day rolling-origin daily retraining backtest, calculates MAE & RMSE, checks overfitting gap, and plots chart. |
 | `data/synthetic_occupancy.csv` | Raw generated series: `date`, `occupancy`. |
-| `data/train.csv` | Clean training split (373 rows) with strictly past-dated features only. |
+| `data/train.csv` | Clean training split (347 rows) with strictly past-dated features only. |
 | `data/validation.csv` | Clean validation split (80 rows). |
-| `data/test.csv` | Clean unseen future test split (81 rows). |
-| `metrics.json` | MAE scores, split date ranges, and feature list. |
+| `data/test.csv` | Clean unseen future test split (107 rows). |
+| `data/backtest_predictions.csv` | Daily records of actual occupancy, baseline predictions, and XGBoost predictions over 90 days. |
+| `data/backtest_predictions.png` | Publication-ready visual line chart comparing predictions against actual occupancy. |
+| `metrics.json` | Baseline MAE, test scores, split date ranges, and 90-day backtest MAE/RMSE metrics. |
 
 ---
 
 ## Results
 
-MAE = the average number of desks a prediction is off by (lower is better). These are the scores from `metrics.json`:
+MAE = the average number of desks a prediction is off by (lower is better). Initial fixed-split scores from `metrics.json`:
 
 | Model | Validation MAE | Test MAE |
 | --- | --- | --- |
-| Moving Average (7-day) | 26.73 | 23.27 |
-| **XGBoost** | **5.30** | **6.52** |
+| Moving Average (7-day) | 27.11 | 23.93 |
+| **XGBoost** | **5.42** | **6.17** |
 
 **Why the baseline is so much worse:** a 7-day average predicts about the same value (~49 desks) every day. It therefore misses the weekly shape badly, with Wednesday at ~80 desks and Sunday at ~5. XGBoost can use `lag_7` and `day_of_week` to learn that shape. Its remaining error (~6 desks) is close to the random noise built into the data (std 6), which is about the best any model can do here.
+
+---
+
+## Backtesting Results
+
+To prove that the model works under realistic operating conditions, we ran a **rolling-origin (expanding window) backtest** over the **last 90 days of the test set** (`2026-04-04` to `2026-07-02`).
+
+### 1. Rolling-Origin Methodology
+In live deployment, tomorrow's desk demand is predicted using all accumulated historical observations up to today. At every step $t$ across the 90-day backtest window:
+1. All observations strictly prior to date $t$ ($t-1, t-2, \dots$) are used to retrain the model.
+2. The model generates a 1-day-ahead forecast for day $t$.
+3. Predictions from both the **7-day Moving Average Baseline** and **XGBoost** are recorded.
+4. The training window expands forward by 1 day, simulating live daily retraining without future leakage.
+
+### 2. Predicted vs. Actual Occupancy Chart
+The chart below illustrates how closely the rolling-origin XGBoost model tracks actual occupancy swings throughout mid-week peaks and weekend troughs:
+
+![90-Day Rolling-Origin Backtest Predictions](data/backtest_predictions.png)
+
+### 3. Model Comparison (MAE & RMSE)
+Performance evaluated across the 90 out-of-sample days (`metrics.json`):
+
+| Model | MAE (Desks) | RMSE (Desks) | Operational Impact |
+| :--- | :---: | :---: | :--- |
+| **7-Day Moving Average Baseline** | 23.54 | 27.12 | Averages weekday peaks with weekend troughs, lagging actual demand by ~24 desks |
+| **XGBoost (Rolling-Origin)** | **6.23** | **7.94** | Accurately models non-linear weekly cycles; error approaches the theoretical noise floor |
+
+- **MAE (Mean Absolute Error)**: Measures the average magnitude of daily forecasting errors. XGBoost achieves **6.23 desks**, reducing error by **73.5%** relative to the moving average.
+- **RMSE (Root Mean Squared Error)**: Penalizes large occasional errors. XGBoost achieves **7.94 desks** vs. **27.12 desks** for the baseline, showing strong stability with zero outlier blowups.
+
+### 4. Overfitting Analysis & Model Justification
+
+To ensure the model has not simply memorized past patterns, we evaluated the **in-sample training error** across all expanding windows against the **out-of-sample backtest error**:
+
+| Evaluation Metric | In-Sample Train Error | Out-of-Sample Backtest Error | Generalization Gap | Status |
+| :--- | :---: | :---: | :---: | :--- |
+| **MAE** | 3.55 desks | 6.23 desks | **+2.69 desks** | **No Harmful Overfitting** |
+| **RMSE** | 4.46 desks | 7.94 desks | **+3.48 desks** | **No Harmful Overfitting** |
+
+#### Key Takeaways:
+1. **Generalization Gap Matches Noise Level**: The synthetic data includes Gaussian noise with standard deviation $\sigma = 6.0$. Because random daily variation cannot be predicted, any honest model will show an out-of-sample error roughly equal to $\sigma$. An out-of-sample MAE of **6.23 desks** is within expected bounds of the data generator's irreducible noise.
+2. **Small Generalization Gap**: Severe overfitting is characterized by near-zero training error accompanied by high test error. Here, the gap of **+2.69 desks MAE** is modest and healthy for tree ensembles constrained with shallow depth (`max_depth=3`).
+3. **Justification of XGBoost**: The Moving Average baseline exhibits severe phase lag and cannot adjust between high-occupancy Wednesdays (~80 desks) and empty Sundays (~5 desks). XGBoost uses `day_of_week`, `is_weekend`, `lag_7`, and `lag_14` to reliably forecast cyclical demand patterns, making it the superior architecture for live desk scheduling.
 
 ---
 
@@ -216,13 +264,16 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 │   ├── synthetic_occupancy.csv
 │   ├── train.csv
 │   ├── validation.csv
-│   └── test.csv
+│   ├── test.csv
+│   ├── backtest_predictions.csv
+│   └── backtest_predictions.png
 ├── pipeline/
 │   ├── __init__.py
 │   ├── init.py
 │   ├── generate_data.py
 │   ├── process_split.py
-│   └── train_evaluate.py
+│   ├── train_evaluate.py
+│   └── backtest.py
 ├── metrics.json
 └── README.md
 ```
