@@ -13,20 +13,20 @@
 
 ## Live API
 
-- **Hugging Face Space URL:** `https://<HF_USERNAME>-hivespace-occupancy-api.hf.space` *(placeholder — update after running [DEPLOYMENT.md](DEPLOYMENT.md))*
-- **Interactive Swagger Docs:** `https://<HF_USERNAME>-hivespace-occupancy-api.hf.space/docs`
-- **Deployment Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md) for the step-by-step Docker and Hugging Face Spaces tutorial.
+- **Live API URL (Render Free Tier):** `https://<YOUR-RENDER-URL>` *(placeholder — deploy using [DEPLOYMENT.md](DEPLOYMENT.md) and replace with your live Render URL)*
+- **Interactive Swagger Docs:** `https://<YOUR-RENDER-URL>/docs`
+- **Deployment Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md) for the step-by-step Docker deployment tutorial on Render's free tier *(used because Hugging Face Spaces restricts free-tier accounts to Static-only Spaces, which cannot run a Python/FastAPI server)*.
 
 ### Test the Live Endpoint with `curl`
 
 **macOS / Linux (bash):**
 ```bash
-curl "https://<HF_USERNAME>-hivespace-occupancy-api.hf.space/predict?date=2026-11-20"
+curl "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
 ```
 
 **Windows PowerShell:**
 ```powershell
-curl.exe "https://<HF_USERNAME>-hivespace-occupancy-api.hf.space/predict?date=2026-11-20"
+curl.exe "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
 ```
 
 **Verified JSON response:**
@@ -305,7 +305,7 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 - **Model Name:** HiveSpace Daily Desk Occupancy Forecaster (`xgb-2026-11-19`)
 - **Model Type:** Gradient-Boosted Decision Tree Regressor (`xgboost.XGBRegressor`, `n_estimators=200`, `max_depth=3`, `learning_rate=0.05`)
 - **Artifact Format:** Native XGBoost JSON (`model/xgb_occupancy.json`, no `pickle`)
-- **Serving Stack:** FastAPI + Uvicorn inside a non-root Docker container on Hugging Face Spaces (free CPU tier, port `7860`)
+- **Serving Stack:** FastAPI + Uvicorn inside a non-root Docker container deployed on Render Free Tier (automatically binds to `$PORT`, defaulting to `7860` locally)
 
 ### Purpose & Intended Use
 - **Primary Purpose:** Forecast the expected number of occupied desks (out of **100 total desks**) for a given calendar date (`YYYY-MM-DD`) to help HiveSpace office managers plan daily staffing, catering, cleaning, and desk availability.
@@ -332,7 +332,7 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 2. **Multi-Step Recursive Drift:** The model was evaluated only for **1-day-ahead** forecasting. For dates after `2026-07-02` (supported up to 180 days ahead, `2026-12-29`), the API forecasts recursively day by day, feeding each prediction back as "yesterday." Error grows with horizon length; the API includes an explicit `warning` field whenever `horizon_days > 1`.
 3. **No Public Holiday or Event Awareness:** National holidays or special office events are not yet modeled.
 4. **Fixed Office Capacity:** Predictions are clipped to `[0, 100]` desks and assume a 100-desk floor.
-5. **Free-Tier Hosting Behavior:** Hugging Face Spaces free CPU containers sleep after ~48 hours without traffic, so the first request after sleep may take 30–60 seconds. The public demo endpoint has no authentication or rate limiting.
+5. **Free-Tier Hosting Behavior:** Render's free tier spins down after ~15 minutes of inactivity, so the first request after spin-down may take 30–50 seconds to wake up. The public demo endpoint has no authentication or rate limiting.
 
 ### How to Use the API
 
@@ -345,12 +345,12 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 
 **Live `curl` example (bash):**
 ```bash
-curl "https://<HF_USERNAME>-hivespace-occupancy-api.hf.space/predict?date=2026-11-20"
+curl "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
 ```
 
 **Live `curl` example (Windows PowerShell):**
 ```powershell
-curl.exe "https://<HF_USERNAME>-hivespace-occupancy-api.hf.space/predict?date=2026-11-20"
+curl.exe "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
 ```
 
 ### Maintenance & Retraining
@@ -405,8 +405,6 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 │   ├── test.csv
 │   ├── backtest_predictions.csv
 │   └── backtest_predictions.png
-├── deploy/
-│   └── space_README.md
 ├── model/
 │   ├── xgb_occupancy.json
 │   └── model_info.json
