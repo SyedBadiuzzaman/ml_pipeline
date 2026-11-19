@@ -19,7 +19,7 @@
 
 ![Supervisor Approval for Local FastAPI Demo](data/supervisor_approval_local_demo.jpg)
 
-- **Demo Video (Unlisted YouTube / Google Drive):** `[Watch 2-Minute Local Demo Video](<INSERT_UNLISTED_VIDEO_LINK_HERE>)` *(replace with your unlisted link after recording)*
+- **Demo Video (Loom):** [Watch 2-Minute Local Demo Video](https://www.loom.com/share/5e81dce8310b48a7ad48da890421868a) *(tested live on `date=2026-12-12`)*
 - **Local Base URL:** `http://127.0.0.1:7860`
 - **Interactive Swagger Docs:** `http://127.0.0.1:7860/docs`
 - **Run Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md) for local run, Docker, and optional cloud deployment instructions.
@@ -33,24 +33,24 @@ uvicorn app.main:app --host 127.0.0.1 --port 7860
 
 **macOS / Linux (bash):**
 ```bash
-curl "http://127.0.0.1:7860/predict?date=2026-11-20"
+curl "http://127.0.0.1:7860/predict?date=2026-12-12"
 ```
 
 **Windows PowerShell:**
 ```powershell
-curl.exe "http://127.0.0.1:7860/predict?date=2026-11-20"
+curl.exe "http://127.0.0.1:7860/predict?date=2026-12-12"
 ```
 
-**Verified JSON response:**
+**Verified JSON response (`2026-12-12`, as demonstrated in the Loom video):**
 ```json
 {
-  "date": "2026-11-20",
-  "day_of_week": "Friday",
-  "predicted_occupancy": 30,
+  "date": "2026-12-12",
+  "day_of_week": "Saturday",
+  "predicted_occupancy": 9,
   "total_desks": 100,
   "forecast_type": "future",
-  "horizon_days": 141,
-  "warning": "This date is 141 days after the last known data. Only 1-day-ahead accuracy was tested (MAE about 6 desks); error is likely larger this far ahead.",
+  "horizon_days": 163,
+  "warning": "This date is 163 days after the last known data. Only 1-day-ahead accuracy was tested (MAE about 6 desks); error is likely larger this far ahead.",
   "model_version": "xgb-2026-11-19"
 }
 ```
@@ -355,14 +355,14 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 | `/predict?date=YYYY-MM-DD` | `GET` | Returns predicted desk occupancy JSON (`422` for bad format, `400` for out-of-range date) |
 | `/docs` | `GET` | Interactive Swagger UI |
 
-**Local `curl` example (bash):**
+**Local `curl` example (bash) — [Watch Demo Video](https://www.loom.com/share/5e81dce8310b48a7ad48da890421868a):**
 ```bash
-curl "http://127.0.0.1:7860/predict?date=2026-11-20"
+curl "http://127.0.0.1:7860/predict?date=2026-12-12"
 ```
 
 **Local `curl` example (Windows PowerShell):**
 ```powershell
-curl.exe "http://127.0.0.1:7860/predict?date=2026-11-20"
+curl.exe "http://127.0.0.1:7860/predict?date=2026-12-12"
 ```
 
 ### Maintenance & Retraining
