@@ -7,26 +7,38 @@
 > [!NOTE]
 > All data in this repository is **synthetic**. The scores below show that the pipeline works. They do not show how the models would perform on real HiveSpace data.
 
-**Contents:** [Live API](#live-api) · [Problem](#problem-and-solution) · [Quick start](#quick-start) · [Data Split Strategy](#data-split-strategy) · [Backtesting Results](#backtesting-results) · [Model Card](#model-card) · [Architecture](#architecture) · [Testing](#testing)
+**Contents:** [Local API & Demo Video](#local-api--demo-video) · [Problem](#problem-and-solution) · [Quick start](#quick-start) · [Data Split Strategy](#data-split-strategy) · [Backtesting Results](#backtesting-results) · [Model Card](#model-card) · [Architecture](#architecture) · [Testing](#testing)
 
 ---
 
-## Live API
+## Local API & Demo Video
 
-- **Live API URL (Render Free Tier):** `https://<YOUR-RENDER-URL>` *(placeholder — deploy using [DEPLOYMENT.md](DEPLOYMENT.md) and replace with your live Render URL)*
-- **Interactive Swagger Docs:** `https://<YOUR-RENDER-URL>/docs`
-- **Deployment Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md) for the step-by-step Docker deployment tutorial on Render's free tier *(used because Hugging Face Spaces restricts free-tier accounts to Static-only Spaces, which cannot run a Python/FastAPI server)*.
+> [!IMPORTANT]
+> **Why Local Deployment + Video Demo (Supervisor Approved):**
+> Hugging Face Spaces currently restricts free-tier accounts to **Static-only** Spaces (both Docker and Gradio SDKs require a paid plan). Per supervisor approval (see screenshot below), running the FastAPI service locally and providing a 2–3 minute screen recording demonstrating a live `curl` request to `/predict` counts as deployed.
 
-### Test the Live Endpoint with `curl`
+![Supervisor Approval for Local FastAPI Demo](data/supervisor_approval_local_demo.jpg)
+
+- **Demo Video (Unlisted YouTube / Google Drive):** `[Watch 2-Minute Local Demo Video](<INSERT_UNLISTED_VIDEO_LINK_HERE>)` *(replace with your unlisted link after recording)*
+- **Local Base URL:** `http://127.0.0.1:7860`
+- **Interactive Swagger Docs:** `http://127.0.0.1:7860/docs`
+- **Run Guide:** See [DEPLOYMENT.md](DEPLOYMENT.md) for local run, Docker, and optional cloud deployment instructions.
+
+### Start Locally & Test with `curl`
+
+```powershell
+# Start the FastAPI server locally on port 7860
+uvicorn app.main:app --host 127.0.0.1 --port 7860
+```
 
 **macOS / Linux (bash):**
 ```bash
-curl "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
+curl "http://127.0.0.1:7860/predict?date=2026-11-20"
 ```
 
 **Windows PowerShell:**
 ```powershell
-curl.exe "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
+curl.exe "http://127.0.0.1:7860/predict?date=2026-11-20"
 ```
 
 **Verified JSON response:**
@@ -305,7 +317,7 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 - **Model Name:** HiveSpace Daily Desk Occupancy Forecaster (`xgb-2026-11-19`)
 - **Model Type:** Gradient-Boosted Decision Tree Regressor (`xgboost.XGBRegressor`, `n_estimators=200`, `max_depth=3`, `learning_rate=0.05`)
 - **Artifact Format:** Native XGBoost JSON (`model/xgb_occupancy.json`, no `pickle`)
-- **Serving Stack:** FastAPI + Uvicorn inside a non-root Docker container deployed on Render Free Tier (automatically binds to `$PORT`, defaulting to `7860` locally)
+- **Serving Stack:** FastAPI + Uvicorn (run locally on port `7860` per supervisor approval; container-ready via `Dockerfile` and `requirements.txt`)
 
 ### Purpose & Intended Use
 - **Primary Purpose:** Forecast the expected number of occupied desks (out of **100 total desks**) for a given calendar date (`YYYY-MM-DD`) to help HiveSpace office managers plan daily staffing, catering, cleaning, and desk availability.
@@ -332,7 +344,7 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 2. **Multi-Step Recursive Drift:** The model was evaluated only for **1-day-ahead** forecasting. For dates after `2026-07-02` (supported up to 180 days ahead, `2026-12-29`), the API forecasts recursively day by day, feeding each prediction back as "yesterday." Error grows with horizon length; the API includes an explicit `warning` field whenever `horizon_days > 1`.
 3. **No Public Holiday or Event Awareness:** National holidays or special office events are not yet modeled.
 4. **Fixed Office Capacity:** Predictions are clipped to `[0, 100]` desks and assume a 100-desk floor.
-5. **Free-Tier Hosting Behavior:** Render's free tier spins down after ~15 minutes of inactivity, so the first request after spin-down may take 30–50 seconds to wake up. The public demo endpoint has no authentication or rate limiting.
+5. **Local Execution & Security Scope:** Per supervisor approval (because Hugging Face Spaces restricts free-tier accounts to Static-only), the API is demonstrated locally with a screen recording. The demo endpoint has no authentication or rate limiting and should not be exposed publicly with real attendance data without adding auth.
 
 ### How to Use the API
 
@@ -343,14 +355,14 @@ XGBoost solves this by learning conditional decision thresholds on `day_of_week`
 | `/predict?date=YYYY-MM-DD` | `GET` | Returns predicted desk occupancy JSON (`422` for bad format, `400` for out-of-range date) |
 | `/docs` | `GET` | Interactive Swagger UI |
 
-**Live `curl` example (bash):**
+**Local `curl` example (bash):**
 ```bash
-curl "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
+curl "http://127.0.0.1:7860/predict?date=2026-11-20"
 ```
 
-**Live `curl` example (Windows PowerShell):**
+**Local `curl` example (Windows PowerShell):**
 ```powershell
-curl.exe "https://<YOUR-RENDER-URL>/predict?date=2026-11-20"
+curl.exe "http://127.0.0.1:7860/predict?date=2026-11-20"
 ```
 
 ### Maintenance & Retraining
@@ -404,7 +416,8 @@ Error: Raw data not found at ...\data\synthetic_occupancy.csv. Run `python pipel
 │   ├── validation.csv
 │   ├── test.csv
 │   ├── backtest_predictions.csv
-│   └── backtest_predictions.png
+│   ├── backtest_predictions.png
+│   └── supervisor_approval_local_demo.jpg
 ├── model/
 │   ├── xgb_occupancy.json
 │   └── model_info.json
