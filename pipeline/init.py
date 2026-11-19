@@ -1,6 +1,6 @@
 """Master runner for the entire HiveSpace desk occupancy pipeline.
 
-This script executes all four pipeline stages in order:
+This script executes all five pipeline stages in order:
 1. Synthetic Data Generation (generate_data.py)
    Creates 548 days of occupancy data with weekly seasonality.
 2. Feature Engineering & Chronological Split (process_split.py)
@@ -12,6 +12,9 @@ This script executes all four pipeline stages in order:
    Simulates live operation over the last 90 days of the test set,
    generates predicted vs. actual chart (data/backtest_predictions.png),
    and quantifies overfitting gap with MAE & RMSE.
+5. Production Model Export (export_model.py)
+   Retrains XGBoost on all available history and saves model/xgb_occupancy.json
+   and model/model_info.json for the FastAPI serving container.
 
 Run from the project root:
     python pipeline/init.py
@@ -26,6 +29,7 @@ if str(PIPELINE_DIR) not in sys.path:
     sys.path.insert(0, str(PIPELINE_DIR))
 
 import backtest
+import export_model
 import generate_data
 import process_split
 import train_evaluate
@@ -55,6 +59,12 @@ def run_pipeline() -> None:
     print("STAGE 4: 90-Day Rolling-Origin Backtest & Chart Generation")
     print("=" * 65)
     backtest.main()
+    print()
+
+    print("=" * 65)
+    print("STAGE 5: Exporting Production Model for FastAPI")
+    print("=" * 65)
+    export_model.main()
     print()
 
     print("=" * 65)

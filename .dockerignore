@@ -1,0 +1,34 @@
+# Local virtual environments and git history
+.venv/
+venv/
+.git/
+.gitignore
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Training-only scripts, charts, docs, and tests (not needed inside the API image)
+tests/
+deploy/
+AGENTS.md
+README.md
+DEPLOYMENT.md
+metrics.json
+data/train.csv
+data/validation.csv
+data/test.csv
+data/backtest_predictions.csv
+data/backtest_predictions.png
+pipeline/generate_data.py
+pipeline/train_evaluate.py
+pipeline/backtest.py
+pipeline/export_model.py
+pipeline/init.py
+
+# Environment secrets
+.env
+.env.*
